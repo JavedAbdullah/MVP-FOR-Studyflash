@@ -8,6 +8,7 @@ from typing import NotRequired, TypedDict
 class TicketState(TypedDict):
     """State carried through the email ingestion graph."""
 
+    subject: NotRequired[str]
     email_body: str
     customer_email: str
 

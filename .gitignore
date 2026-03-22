@@ -16,6 +16,10 @@ venv/
 # Logs
 *.log
 
+# Node / Next.js
+node_modules/
+.next/
+
 # Tooling
 .pytest_cache/
 .mypy_cache/

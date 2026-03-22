@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import re
 from typing import Literal
 
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
 from ingest_email_engine.llm import get_llm
@@ -35,21 +39,35 @@ def categorize(state: TicketState) -> dict[str, object]:
     logger.info("node=categorize start")
 
     llm = get_llm()
-    structured_llm = llm.with_structured_output(_Categorization)
+    parser = PydanticOutputParser(pydantic_object=_Categorization)
 
     email_body = state["email_body"]
     customer_email = state["customer_email"]
 
-    prompt = (
+    system = (
         "You are a customer support triage assistant. "
-        "Given the customer's email, classify it into a category and priority.\n\n"
+        "Classify the email into category and priority. "
+        "Return ONLY valid JSON that matches the schema."
+    )
+
+    human = (
         "Allowed categories: bug, refund, info.\n"
         "Allowed priorities: high, low.\n\n"
         f"Customer email: {customer_email}\n"
-        f"Email body:\n{email_body}\n"
+        f"Email body:\n{email_body}\n\n"
+        f"{parser.get_format_instructions()}"
     )
 
-    result: _Categorization = structured_llm.invoke(prompt)
+    response = llm.invoke([SystemMessage(content=system), HumanMessage(content=human)])
+    text = getattr(response, "content", str(response))
+
+    try:
+        result = parser.parse(text)
+    except Exception:
+        match = re.search(r"\{.*\}", text, flags=re.DOTALL)
+        if not match:
+            raise
+        result = _Categorization.model_validate(json.loads(match.group(0)))
 
     logger.info("node=categorize done category=%s priority=%s", result.category, result.priority)
     return {"category": result.category, "priority": result.priority}
