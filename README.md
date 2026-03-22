@@ -39,16 +39,16 @@ A real integration would require IMAP/SMTP or Microsoft Graph (plus secure crede
 
 ```mermaid
 flowchart LR
-  UI[Frontend<br/>Next.js :3000] -->|HTTP JSON| API[Backend<br/>FastAPI :8000]
+  UI[Frontend (Next.js :3000)] -->|HTTP JSON| API[Backend (FastAPI :8000)]
   API -->|SQLAlchemy| DB[(Postgres :5432)]
 
-  API -->|background poller| SIM[Inbox Simulator<br/>tickets samples]
+  API -->|background poller| SIM[Inbox Simulator (tickets samples)]
   SIM -->|"new email"| API
 
-  API -->|invoke| LG[LangGraph<br/>Ingest Email Engine]
+  API -->|invoke| LG[LangGraph Ingest Email Engine]
   LG -->|categorize + draft| LLM[Anthropic Messages API]
-  LG -->|enrich (mock)| ENR1[Mock Sentry]
-  LG -->|enrich (DB)| ENR2[mock_customers]
+  LG -->|enrich mock| ENR1[Mock Sentry]
+  LG -->|enrich db| ENR2[mock_customers]
 
   LG -->|final_state| API
   API -->|persist| DB
