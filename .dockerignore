@@ -1,0 +1,24 @@
+.git
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+
+# Python venvs
+**/venv
+**/venv/
+**/.venv
+**/.venv/
+
+# Node
+**/node_modules
+**/.next
+
+# Logs
+**/*.log
+
+# OS
+.DS_Store

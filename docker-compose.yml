@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: support_db
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
+      POSTGRES_DB: ${POSTGRES_DB:-support_db}
     ports:
       - "5432:5432"
     volumes:
@@ -20,16 +18,13 @@ services:
       - ollama_data:/root/.ollama
 
   backend:
-    image: python:3.12-slim
-    working_dir: /app/backend
-    volumes:
-      - ./:/app
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
-      DATABASE_URL: postgresql+psycopg2://admin:password123@db:5432/support_db
-      OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: llama3
-    command: >
-      sh -c "pip install --no-cache-dir -r /app/requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000"
+      DATABASE_URL: postgresql+psycopg2://$${POSTGRES_USER:-admin}:$${POSTGRES_PASSWORD:-password123}@db:5432/$${POSTGRES_DB:-support_db}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
     ports:
       - "8000:8000"
     depends_on:
@@ -37,12 +32,12 @@ services:
       - ollama
 
   frontend:
-    image: node:20-alpine
-    working_dir: /app/frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     volumes:
-      - ./frontend:/app/frontend
-    command: >
-      sh -c "npm install && npm run dev -- --hostname 0.0.0.0 --port 3000"
+      - ./frontend:/app
+      - /app/node_modules
     ports:
       - "3000:3000"
     depends_on:
