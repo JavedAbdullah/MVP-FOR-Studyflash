@@ -19,6 +19,10 @@ A real integration would require IMAP/SMTP or Microsoft Graph (plus secure crede
 
 ## Screenshots
 
+## Demo video (no audio)
+
+- Demo walkthrough (MP4): [materials/demo.mp4](materials/demo.mp4)
+
 ### AI Pipeline (overview)
 
 <img src="materials/AI%20pipeline.png" alt="AI Pipeline" width="700" />
@@ -147,6 +151,9 @@ Base URL: `http://localhost:8000`
 
 - `GET /tickets`: list tickets (ordered by `created_at` desc). Each ticket includes `messages` sorted ASC.
 - `GET /tickets/{id}`: ticket detail + `messages` sorted ASC.
+- `GET /agents`: list available demo agents.
+- `POST /tickets/{id}/assign`: manual reassignment.
+  - Body: `{ "agent_id": 5 }` or `{ "agent_id": null }`
 - `POST /tickets/{id}/reply`: appends an `agent` message to the conversation.
   - Body: `{ "body": "..." }`
   - Prepares a mock SMTP reply with `In-Reply-To`/`References` (real sending disabled).
