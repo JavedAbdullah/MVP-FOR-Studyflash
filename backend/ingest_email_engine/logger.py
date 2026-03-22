@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Final
@@ -34,7 +35,9 @@ def get_logger(name: str = _DEFAULT_LOGGER_NAME) -> logging.Logger:
     stream_handler.setLevel(logging.INFO)
     stream_handler.setFormatter(formatter)
 
-    log_path = Path.cwd() / _LOG_FILE_NAME
+    log_dir = Path(os.getenv("INGEST_LOG_DIR", str(Path.cwd() / "logs")))
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / _LOG_FILE_NAME
     file_handler = RotatingFileHandler(
         filename=str(log_path),
         maxBytes=2 * 1024 * 1024,

@@ -15,6 +15,7 @@ venv/
 
 # Logs
 *.log
+backend/logs/
 
 # Node / Next.js
 node_modules/

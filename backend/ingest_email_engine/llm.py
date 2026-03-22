@@ -1,35 +1,93 @@
 """LLM initialization for the ingest pipeline.
 
-Uses a local Ollama instance via LangChain `ChatOllama`.
+Uses Anthropic's Messages API. This keeps the ingestion pipeline simple and
+does not require a local model runtime.
 
 Environment variables:
-    - OLLAMA_BASE_URL: defaults to `http://localhost:11434`
-    - OLLAMA_MODEL: defaults to `llama3`
+    - ANTHROPIC_API_KEY: required
+    - ANTHROPIC_MODEL: defaults to `claude-3-haiku-20240307`
+    - ANTHROPIC_TIMEOUT: request timeout seconds (default: 30)
+    - ANTHROPIC_MAX_TOKENS: max tokens to generate (default: 256)
 """
 
 from __future__ import annotations
 
+import json
 import os
-from functools import lru_cache
+import urllib.error
+import urllib.request
 from typing import Final
 
-from langchain_community.chat_models import ChatOllama
+DEFAULT_MODEL: Final[str] = os.getenv("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
+DEFAULT_TIMEOUT_S: Final[int] = int(os.getenv("ANTHROPIC_TIMEOUT", "30"))
+DEFAULT_MAX_TOKENS: Final[int] = int(os.getenv("ANTHROPIC_MAX_TOKENS", "256"))
+DEFAULT_API_URL: Final[str] = os.getenv("ANTHROPIC_API_URL", "https://api.anthropic.com/v1/messages")
 
 
-DEFAULT_MODEL: Final[str] = os.getenv("OLLAMA_MODEL", "llama3")
-DEFAULT_BASE_URL: Final[str] = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+__all__ = [
+    "DEFAULT_MODEL",
+    "DEFAULT_TIMEOUT_S",
+    "DEFAULT_MAX_TOKENS",
+    "DEFAULT_API_URL",
+    "anthropic_chat",
+]
 
 
-__all__ = ["DEFAULT_MODEL", "DEFAULT_BASE_URL", "get_llm", "llm"]
+def anthropic_chat(
+    *,
+    system: str,
+    user: str,
+    model: str = DEFAULT_MODEL,
+    timeout_s: int = DEFAULT_TIMEOUT_S,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
+) -> str:
+    """Call Anthropic Messages API and return the assistant text content."""
 
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY is not set")
 
-@lru_cache(maxsize=1)
-def get_llm(model: str = DEFAULT_MODEL, base_url: str = DEFAULT_BASE_URL) -> ChatOllama:
-    """Create (and cache) a ChatOllama client."""
+    payload = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system,
+        "messages": [
+            {"role": "user", "content": user},
+        ],
+    }
 
-    return ChatOllama(model=model, base_url=base_url, temperature=0)
+    request = urllib.request.Request(
+        DEFAULT_API_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+        },
+        method="POST",
+    )
 
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_s) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Anthropic HTTP {exc.code}: {body}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"Anthropic request failed: {exc}") from exc
 
-# Module-level instance export.
-# Note: does not verify Ollama availability at import-time.
-llm: ChatOllama = get_llm()
+    blocks = data.get("content")
+    if not isinstance(blocks, list):
+        raise RuntimeError(f"Unexpected Anthropic response: {data}")
+
+    texts: list[str] = []
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        if block.get("type") == "text" and isinstance(block.get("text"), str):
+            texts.append(block["text"])
+
+    content = "".join(texts).strip()
+    if not content:
+        raise RuntimeError(f"Unexpected Anthropic content blocks: {blocks}")
+    return content
