@@ -1,0 +1,4 @@
+Tags: AI, flashcard-issues
+
+---
+MOBILE: Fehler beim erstellen des decks Mensch

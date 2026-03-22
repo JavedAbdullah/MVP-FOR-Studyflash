@@ -1,0 +1,4 @@
+Tags: technical-errors, ai-draft
+
+---
+ich kann wenn ich in dem Kalender einen neuen Kurs hinzufügen will keinen Arbeitsbereich angeben

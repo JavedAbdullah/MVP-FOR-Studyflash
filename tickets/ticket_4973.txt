@@ -1,0 +1,4 @@
+Tags: quiz-issues, ai-draft
+
+---
+MOBILE: Quiz Beim quiz geben ich meisten 20 oder Max fragen an im multiple choiche aber es sind immer nur zwei oder frei fragen

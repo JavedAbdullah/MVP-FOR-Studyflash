@@ -1,0 +1,4 @@
+Tags: flashcard-issues, ai-draft
+
+---
+MOBILE: Reihenfolge Karteikarten Wenn ich 25 Karteikarten habe, werden erst alle 25 Karten einmal durchgenommen, bevor die Karten, die ich zum Beispiel „nochmal“ machen wollte, wiederholt werden. Das bringt mir beim Lernen rein gar nichts, wenn ich erst 25 Karten lernen muss bevor die Karten wiederholt werden. Es sollte eine Kategorie geben, wo man seine Karten „üben“ kann bevor man ans Lernen geht.

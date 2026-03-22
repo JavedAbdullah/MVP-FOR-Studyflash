@@ -1,0 +1,4 @@
+Tags: ai-draft, summary-issues, auto-closed, garbage
+
+---
+MOBILE: Zusammenfassungen exportieren Im Webbrowser lässt sich die Zusammenfassung nicht exportieren. Wenn ich aud „drucken“ klicke, öffnet sich das Druckfenster nicht. Stattdessen popt unten rechts ein grünes Feld auf (siehe Bild). Und in der App kann ich das auch nciht exportieren. Gibt es da vielleicht eine Lösung?

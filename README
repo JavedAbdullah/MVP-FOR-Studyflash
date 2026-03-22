@@ -1,0 +1,74 @@
+allora l'dea di base è:
+
+nella scheramta pricnipale vedo tante email generate dalla
+AI pipeline, 
+
+-> oggetto email - [nome utente assegnato]
+
+utenti possibili:
+    - (genera utentu possibili)
+
+cliccando su slla tendina si apre l'email, si legge il draft generato con AI, indicando pririta, categorai, con dati arricchhiti dal DB se serve, ci sono anche bottoni ripsondi, che se cliccando apre una parte dove scrivere il testo che sara la ripsota al email, e la ripsota rimane nello storio dell email (quindi facendo clicl sub menu a tendina vedo tutto dal primo email fino allo storico)
+
+
+
+
+per questo punto:
+Sending and receiving in a conversation on the support should maintain parity with an Outlook thread. That means a response sent from Outlook should also be visible in the thread in the support platform. Inversely, a response sent from the support platform should be visible in the mail thread on Outlook.
+
+ho deciso di simualare, in futuro si puo integrare con un. vero servizio di email
+
+
+
+============================================
+
+LangGraph Pipeline Diagram
+[ START ]
+
+Description: New email arrives from the Simulator or Outlook Inbox.
+
+Arrow pointing down to...
+
+Node: Ingest & Clean
+
+Description: Extracts the email body, sender, and Message-ID. Initializes the shared State.
+
+Arrow pointing down to...
+
+Node: Categorize & Prioritize (LLM)
+
+Description: AI analyzes the email to determine the Category (Bug, Refund, Info) and Priority (High, Low).
+
+Arrow pointing down to...
+
+Router: Conditional Edge (Draw this as a Decision Diamond 🔷)
+
+Description: Routes the flow based on the Category.
+
+From the diamond, draw 3 arrows:
+
+Path 1 ("Bug"): ➡️ Goes to Node: Enrich (Sentry) (Fetches mock error logs).
+
+Path 2 ("Refund"): ➡️ Goes to Node: Enrich (DB) (Queries mock_customers table for subscription plan).
+
+Path 3 ("Info"): ➡️ Skips enrichment and goes straight to the drafting node.
+
+Node: Draft Response (LLM)
+
+All arrows from Step 4 converge here.
+
+Description: AI generates a response draft using the original email context + the enriched data from the previous step.
+
+Arrow pointing down to...
+
+Node: Assign Agent
+
+Description: Routes the ticket to the correct team member's ID based on the category (e.g., Bugs go to Tech Support).
+
+Arrow pointing down to...
+
+[ END & SAVE ]
+
+Description: FastAPI takes the final TicketState and executes an INSERT into the Postgres Database.
+
+============================================
