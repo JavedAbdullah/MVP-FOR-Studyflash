@@ -80,6 +80,7 @@ class TicketOut(BaseModel):
     category: str | None
     priority: str | None
     ai_draft: str | None
+    suggested_agent_id: int | None = None
     agent: AgentOut | None
     messages: list[MessageOut]
     created_at: datetime
@@ -87,6 +88,10 @@ class TicketOut(BaseModel):
 
 class ReplyIn(BaseModel):
     body: str
+
+
+class AssignIn(BaseModel):
+    agent_id: int | None
 
 
 DEFAULT_MOCK_EMAILS: list[dict[str, str]] = [
@@ -197,15 +202,18 @@ def _get_simulation_emails() -> list[dict[str, str]]:
 def _seed_data(db: Session, *, emails: list[dict[str, str]]) -> None:
     """Seed minimal agents/customers if tables are empty."""
 
-    existing_agent = db.execute(select(Agent).limit(1)).scalar_one_or_none()
-    if not existing_agent:
-        db.add_all(
-            [
-                Agent(name="Alice", email="alice@support.local", role="support"),
-                Agent(name="Bob", email="bob@support.local", role="billing"),
-                Agent(name="Cleo", email="cleo@support.local", role="general"),
-            ]
-        )
+    demo_agents = [
+        Agent(name="Alice", email="alice@support.local", role="support"),
+        Agent(name="Bob", email="bob@support.local", role="billing"),
+        Agent(name="Cleo", email="cleo@support.local", role="general"),
+        Agent(name="Dario", email="dario@support.local", role="support"),
+        Agent(name="Eve", email="eve@support.local", role="billing"),
+    ]
+
+    for agent in demo_agents:
+        existing = db.execute(select(Agent).where(Agent.email == agent.email)).scalar_one_or_none()
+        if not existing:
+            db.add(agent)
 
     for email in {e["sender"] for e in emails}:
         customer = db.execute(
@@ -492,6 +500,37 @@ def get_ticket(ticket_id: int, db: Session = Depends(get_db)) -> Ticket:
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
+    ticket.messages.sort(key=lambda m: m.created_at)
+    return ticket
+
+
+@app.get("/agents", response_model=list[AgentOut])
+def list_agents(db: Session = Depends(get_db)) -> list[Agent]:
+    return list(db.execute(select(Agent).order_by(Agent.id.asc())).scalars().all())
+
+
+@app.post("/tickets/{ticket_id}/assign", response_model=TicketOut)
+def assign_ticket(ticket_id: int, payload: AssignIn, db: Session = Depends(get_db)) -> Ticket:
+    ticket = (
+        db.query(Ticket)
+        .options(joinedload(Ticket.messages), joinedload(Ticket.agent))
+        .filter(Ticket.id == ticket_id)
+        .first()
+    )
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    agent_id = payload.agent_id
+    if agent_id is not None:
+        agent = db.execute(select(Agent).where(Agent.id == agent_id)).scalar_one_or_none()
+        if not agent:
+            raise HTTPException(status_code=400, detail="Agent not found")
+        ticket.agent_id = agent_id
+    else:
+        ticket.agent_id = None
+
+    db.commit()
+    db.refresh(ticket)
     ticket.messages.sort(key=lambda m: m.created_at)
     return ticket
 

@@ -35,6 +35,7 @@ type Ticket = {
   category: string | null;
   priority: string | null;
   ai_draft: string | null;
+  suggested_agent_id?: number | null;
   agent: Agent | null;
   messages: Message[];
   created_at: string;
@@ -71,6 +72,7 @@ function Badge({ label, variant }: { label: string; variant: "bug" | "refund" | 
 
 export default function Page() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"open" | "closed">("open");
@@ -82,6 +84,7 @@ export default function Page() {
   const [draftById, setDraftById] = useState<Record<number, string>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [assigningById, setAssigningById] = useState<Record<number, boolean>>({});
 
   const sortedTickets = useMemo(() => {
     return [...tickets].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
@@ -121,6 +124,19 @@ export default function Page() {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchAgents(): Promise<void> {
+    try {
+      const res = await fetch(`${API_BASE}/agents`, { cache: "no-store" });
+      if (!res.ok) {
+        return;
+      }
+      const data = (await res.json()) as Agent[];
+      setAgents(Array.isArray(data) ? data : []);
+    } catch {
+      // ignore
     }
   }
 
@@ -228,6 +244,33 @@ export default function Page() {
     }
   }
 
+  async function assignTicket(ticketId: number, agentId: number | null): Promise<void> {
+    // Optimistic UI update (prevents the select from snapping back)
+    setTickets((prev) => {
+      const nextAgent = agentId === null ? null : agents.find((a) => a.id === agentId) ?? null;
+      return prev.map((t) => (t.id === ticketId ? { ...t, agent: nextAgent } : t));
+    });
+
+    setAssigningById((prev) => ({ ...prev, [ticketId]: true }));
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${ticketId}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent_id: agentId }),
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      await fetchTickets();
+      showToast("Assignee updated");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+      // Re-sync if the optimistic update was wrong.
+      await fetchTickets();
+    }
+    setAssigningById((prev) => ({ ...prev, [ticketId]: false }))
+  }
+
   useEffect(() => {
     if (!simRunning) {
       setNextInboxInS(null);
@@ -243,6 +286,7 @@ export default function Page() {
 
   useEffect(() => {
     void fetchTickets();
+    void fetchAgents();
     void fetchSimulationStatus();
     const id = window.setInterval(() => {
       void fetchTickets();
@@ -349,6 +393,7 @@ export default function Page() {
             const categoryVariant = category === "bug" || category === "refund" || category === "info" ? (category as "bug" | "refund" | "info") : "info";
             const priorityLabel = t.priority ? `Priority: ${t.priority}` : "Priority: —";
             const agentName = t.agent?.name ?? "Unassigned";
+            const suggestedAgent = typeof t.suggested_agent_id === "number" ? agents.find((a) => a.id === t.suggested_agent_id) : undefined;
             const messages = [...(ticket.messages ?? [])].sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
 
             return (
@@ -366,10 +411,7 @@ export default function Page() {
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Badge label={(t.category ?? "info").toUpperCase()} variant={categoryVariant} />
                       <Badge label={priorityLabel} variant="priority" />
-                      <span className="inline-flex items-center gap-1 text-xs text-slate-600">
-                        <User className="h-3.5 w-3.5" />
-                        {agentName}
-                      </span>
+                      <Badge label={`Assigned to ${agentName}`} variant="neutral" />
                     </div>
                   </div>
                   <ChevronDown
@@ -379,6 +421,34 @@ export default function Page() {
 
                 {isOpen ? (
                   <div className="space-y-4 border-t border-slate-200 px-4 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-sm text-slate-700">
+                        <span className="font-medium text-slate-800">Assigned to {agentName}</span>
+                        {suggestedAgent ? (
+                          <span className="ml-2 text-xs text-slate-500">Suggested: {suggestedAgent.name}</span>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-slate-300"
+                          value={t.agent?.id ? String(t.agent.id) : ""}
+                          disabled={Boolean(assigningById[t.id])}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const nextId = raw ? Number(raw) : null;
+                            void assignTicket(t.id, Number.isFinite(nextId as number) ? (nextId as number) : null);
+                          }}
+                        >
+                          <option value="">Unassigned</option>
+                          {agents.map((a) => (
+                            <option key={a.id} value={String(a.id)}>
+                              {a.name} ({a.role})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
                     <div>
                       <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-800">
                         <MessageSquareText className="h-4 w-4 text-slate-500" />

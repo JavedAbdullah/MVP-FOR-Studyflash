@@ -126,6 +126,23 @@ class Ticket(Base):
         cascade="all, delete-orphan",
     )
 
+    @property
+    def suggested_agent_id(self) -> int | None:
+        """Return the suggested agent for this ticket.
+
+        This is computed from the category so it remains stable even if the
+        ticket is manually reassigned.
+        """
+
+        category = (self.category or "").lower().strip()
+        if category == "bug":
+            return 1
+        if category == "refund":
+            return 2
+        if category:
+            return 3
+        return None
+
 
 class Message(Base):
     """Message within a ticket conversation."""
