@@ -1,8 +1,10 @@
 # Support Ticketing MVP (Inbox Simulator + AI Triage)
 
+<!-- markdownlint-disable MD033 -->
+
 End-to-end MVP that simulates an email inbox, turns “emails” into tickets, enriches/triages them through a **LangGraph** pipeline, persists everything to **Postgres**, and renders it in a **Next.js** dashboard.
 
-![User Interface](materials/user%20interface.jpeg)
+<img src="materials/user%20interface.jpeg" alt="User Interface" width="900" />
 
 ## VERY IMPORTANT DISCLAIMER (Inbox/Email Simulation)
 
@@ -19,19 +21,19 @@ A real integration would require IMAP/SMTP or Microsoft Graph (plus secure crede
 
 ### AI Pipeline (overview)
 
-![AI Pipeline](materials/AI%20pipeline.png)
+<img src="materials/AI%20pipeline.png" alt="AI Pipeline" width="700" />
 
 ### DB Schema (overview)
 
-![DB Scheme](materials/DB%20scheme.png)
+<img src="materials/DB%20scheme.png" alt="DB Schema" width="700" />
 
 ### Conversation / Reply
 
-![User Response](materials/user%20response.jpeg)
+<img src="materials/user%20response.jpeg" alt="Conversation / Reply" width="700" />
 
 ### Wireframe (Excalidraw)
 
-![Excalidraw UI](materials/escalidraw%20user%20interface.jpeg)
+<img src="materials/escalidraw%20user%20interface.jpeg" alt="Wireframe (Excalidraw)" width="700" />
 
 ## Architecture
 
