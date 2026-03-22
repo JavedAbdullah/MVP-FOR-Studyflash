@@ -7,11 +7,13 @@ It uses SQLAlchemy 2.0 style typing and is designed for PostgreSQL.
 from __future__ import annotations
 
 import os
+import time
 from datetime import datetime
 from enum import Enum
 from typing import Generator
 
 from sqlalchemy import DateTime, ForeignKey, String, create_engine, func, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import (
     DeclarativeBase,
     Session,
@@ -150,9 +152,38 @@ class Message(Base):
 
 
 def init_db() -> None:
-    """Create database tables."""
+    """Create database tables.
 
+    In containerized environments Postgres may take a few seconds to accept
+    connections. This function retries before failing.
+    """
+
+    wait_for_db()
     Base.metadata.create_all(bind=engine)
+
+
+def wait_for_db(max_attempts: int = 30, initial_delay_s: float = 0.5) -> None:
+    """Wait until the database accepts connections.
+
+    Raises:
+        OperationalError: if the DB is still unreachable after the retries.
+    """
+
+    delay_s = initial_delay_s
+    last_error: OperationalError | None = None
+
+    for _ in range(max_attempts):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return
+        except OperationalError as exc:
+            last_error = exc
+            time.sleep(delay_s)
+            delay_s = min(delay_s * 1.5, 5.0)
+
+    assert last_error is not None
+    raise last_error
 
 
 def get_db() -> Generator[Session, None, None]:
